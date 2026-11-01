@@ -12,7 +12,6 @@ app = Flask(__name__)
 def home():
     return "Bot is active!"
 
-# دالة قراءة النصوص من الصور عبر الخدمة السحابية الآمنة
 def extract_text_from_image(image_bytes):
     url = 'https://api.ocr.space/parse/image'
     payload = {
