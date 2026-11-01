@@ -1,56 +1,70 @@
 import os
-from flask import Flask
 import telebot
-import threading
-import pytesseract
-from PIL import Image
 import requests
-from io import BytesIO
+import io
 
-TOKEN = "8311523299:AAEyE-5MVi7Xno5SF7q_9p_QeHZ2a01BsUQ"
+# ضع الرمز المميز (Token) الخاص ببوتك هنا
+TOKEN = "8311523299:AAEyE-5MVi7Xno5SF7q_9"
 bot = telebot.TeleBot(TOKEN)
-server = Flask(__name__)
 
+# إعداد خادم فلاسك للحفاظ على تشغيل البوت 24/7 على Render
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "الروبت يعمل !"
+
+# دالة قراءة النصوص من الصور باستخدام خدمة سحابية مجانية
+def extract_text_from_image(image_bytes):
+    url = 'https://api.ocr.space/parse/image'
+    payload = {
+        'apikey': 'helloworld',  # مفتاح مجاني عام للاختبار
+        'language': 'ara',       # دعم اللغة العربية والإنجليزية
+        'isOverlayRequired': False
+    }
+    files = {'file': ('image.jpg', image_bytes, 'image/jpeg')}
+    try:
+        response = requests.post(url, data=payload, files=files)
+        result = response.json()
+        if result.get('ParsedResults'):
+            return result['ParsedResults'][0]['ParsedText']
+        else:
+            return "عذراً، لم أتمكن من استخراج أي نص من الصورة."
+    except Exception as e:
+        return f"حدث خطأ أثناء الاتصال بخدمة القراءة: {str(e)}"
+
+# استقبال الرسائل النصية والترحيب
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "أهلاً بك يا إسماعيل! أرسل لي أي صورة تحتوي على نص وسأقوم باستخراجه لك فوراً 24/7.")
-
-@server.route('/')
-def webhook():
-    return "Bot is running!", 200
+    bot.reply_to(message, "مرحباً بك! أرسل لي أي صورة تحتوي على نصوص وسأقوم باستخراجه لك فوراً 24/7.")
 
 # استقبال الصور واستخراج النص منها
 @bot.message_handler(content_types=['photo'])
 def handle_image(message):
+    bot.reply_to(message, "⏳ جاري قراءة الصورة واستخراج النص...")
     try:
-        bot.reply_to(message, "⏳ جاري قراءة الصورة واستخراج النص...")
-        
-        # الحصول على أعلى دقة للصورة المرسلة
-        fileID = message.photo[-1].file_id
-        file_info = bot.get_file(fileID)
+        # الحصول على أفضل جودة للصورة المرسلة
+        file_info = bot.get_file(message.photo[-1].file_id)
         downloaded_file = bot.download_file(file_info.file_path)
         
-        # فتح الصورة باستخدام PIL
-        image = Image.open(BytesIO(downloaded_file))
+        # استخراج النص باستخدام الدالة السحابية
+        extracted_text = extract_text_from_image(downloaded_file)
         
-        # استخراج النص (يدعم العربية والإنجليزية)
-        extracted_text = pytesseract.image_to_string(image, lang='ara+eng')
-        
-        if extracted_text.strip():
-            bot.reply_to(message, f"📝 **النص المستخرج:**\n\n{extracted_text}")
-        else:
-            bot.reply_to(message, "⚠️ لم أتمكن من العثور على نص واضح في هذه الصورة.")
+        if not extracted_text.strip():
+            extracted_text = "لم يتم العثور على أي نص واضح في الصورة."
+            
+        bot.reply_to(message, f"📄 **النص المستخرج:**\n\n{extracted_text}")
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ أثناء معالجة الصورة: {str(e)}")
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    bot.reply_to(message, "أرسل لي صورة وسأقوم باستخراج النص الموجود فيها!")
-
-if __name__ == "__main__":
-    # تشغيل التيليجرام في الخلفية
-    t = threading.Thread(target=bot.infinity_polling)
-    t.start()
-    # تشغيل خادم الويب على المنفذ المطلوب
-    port = int(os.environ.get("PORT", 5000))
-    server.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    # تشغيل البอด وفلاسك معا
+    import threading
+    def run_flask():
+        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+        
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    
+    bot.infinity_polling()
