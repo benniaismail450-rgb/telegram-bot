@@ -5,12 +5,11 @@ from flask import Flask
 
 TOKEN = "8311523299:AAEyE-5MVi7Xno5SF7q_9"
 bot = telebot.TeleBot(TOKEN)
-
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is active!"
+    return "Bot is active and running!"
 
 def extract_text_from_image(image_bytes):
     url = 'https://api.ocr.space/parse/image'
@@ -32,7 +31,7 @@ def extract_text_from_image(image_bytes):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "أهلاً بك يا إسماعيل! البوت جاهز الآن. أرسل لي أي صورة وسأستخرج منها النص فوراً.")
+    bot.reply_to(message, "أهلاً بك يا إسماعيل! البوت يعمل الآن بنجاح. أرسل لي أي صورة وسأستخرج منها النص فوراً.")
 
 @bot.message_handler(content_types=['photo'])
 def handle_image(message):
@@ -48,5 +47,7 @@ def handle_image(message):
 if __name__ == '__main__':
     import threading
     port = int(os.environ.get('PORT', 5000))
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port)).start()
-    bot.infinity_polling()
+    # تشغيل فلاسك في خلفية منفصلة
+    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)).start()
+    # تشغيل البوت بشكل مباشر
+    bot.infinity_polling(skip_pending=True)
