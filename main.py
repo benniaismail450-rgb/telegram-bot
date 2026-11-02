@@ -3,8 +3,9 @@ import telebot
 import requests
 from flask import Flask
 
-TOKEN = "8311523299:AAEyE-5MVi7Xno5SF7q_9"
+TOKEN = "9024426042:AAhVLk97IkiWEdm0EyL5Fyr80x4KXaNaK-4"
 bot = telebot.TeleBot(TOKEN)
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -22,32 +23,36 @@ def extract_text_from_image(image_bytes):
     try:
         response = requests.post(url, data=payload, files=files)
         result = response.json()
-        if result.get('ParsedResults'):
+        if result.get('IsParsedToUnicode'):
             return result['ParsedResults'][0]['ParsedText']
-        else:
-            return "لم يتم العثور على أي نص واضح في الصورة."
+        return "لم استطع قراءة النص من الصورة."
     except Exception as e:
-        return f"حدث خطأ أثناء الاتصال: {str(e)}"
+        return "حدث خطأ أثناء معالجة الصورة."
+
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    try:
+        bot.reply_to(message, "⏳ جاري قراءة النص من الصورة...")
+        fileID = message.photo[-1].file_id
+        file_info = bot.get_file(fileID)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        extracted_text = extract_text_from_image(downloaded_file)
+        bot.reply_to(message, f"📄 النص المستخرج:\n\n{extracted_text}")
+    except Exception as e:
+        bot.reply_to(message, "حدث خطأ أثناء تحميل الصورة.")
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "أهلاً بك يا إسماعيل! البوت يعمل الآن بنجاح. أرسل لي أي صورة وسأستخرج منها النص فوراً.")
+    bot.reply_to(message, "أهلاً بك! أرسل لي أي صورة تحتوي على نص وسأقوم باستخراجه لك.")
 
-@bot.message_handler(content_types=['photo'])
-def handle_image(message):
-    bot.reply_to(message, "⏳ جاري قراءة الصورة واستخراج النص...")
-    try:
-        file_info = bot.get_file(message.photo[-1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        extracted_text = extract_text_from_image(downloaded_file)
-        bot.reply_to(message, f"📄 **النص المستخرج:**\n\n{extracted_text}")
-    except Exception as e:
-        bot.reply_to(message, f"❌ حدث خطأ أثناء معالجة الصورة: {str(e)}")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     import threading
-    port = int(os.environ.get('PORT', 5000))
-    # تشغيل فلاسك في خلفية منفصلة
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)).start()
-    # تشغيل البوت بشكل مباشر
-    bot.infinity_polling(skip_pending=True)
+    def run_bot():
+        bot.infinity_polling()
+    
+    t = threading.Thread(target=run_bot)
+    t.start()
+    
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
