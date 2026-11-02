@@ -1,6 +1,6 @@
 import os
 import telebot
-import requests
+import yt_dlp
 from flask import Flask
 
 TOKEN = "9024426042:AAHvLk97IkiWEdmOEyL5Fyr80x4KXaNaK-4"
@@ -12,48 +12,39 @@ app = Flask(__name__)
 def home():
     return "Bot is active and running!"
 
-def extract_text_from_image(image_bytes):
-    url = 'https://api.ocr.space/parse/image'
-    payload = {
-        'apikey': 'helloworld',
-        'language': 'ara',
-        'isOverlayRequired': False
+def download_video(url):
+    ydl_opts = {
+        'format': 'best',
+        'outtmpl': 'video.mp4',
+        'max_filesize': 50 * 1024 * 1024, # حد أقصى 50 ميجابايت لتناسب تيليجرام
     }
-    files = {'file': ('image.jpg', image_bytes, 'image/jpeg')}
     try:
-        response = requests.post(url, data=payload, files=files)
-        result = response.json()
-        print("OCR API Response:", result)
-        
-        if result.get('ParsedResults') and len(result['ParsedResults']) > 0:
-            parsed_text = result['ParsedResults'][0].get('ParsedText', '').strip()
-            if parsed_text:
-                return parsed_text
-        
-        error_msgs = result.get('ErrorMessage')
-        if error_msgs:
-            return f"خطأ من موقع OCR: {error_msgs}"
-            
-        return "لم يتم العثور على نص واضح في الصورة."
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        return 'video.mp4'
     except Exception as e:
-        return f"حدث خطأ تقني: {str(e)}"
-
-@bot.message_handler(content_types=['photo'])
-def handle_photo(message):
-    try:
-        bot.reply_to(message, "⏳ جاري قراءة النص من الصورة...")
-        fileID = message.photo[-1].file_id
-        file_info = bot.get_file(fileID)
-        downloaded_file = bot.download_file(file_info.file_path)
-        
-        extracted_text = extract_text_from_image(downloaded_file)
-        bot.reply_to(message, f"📄 النص المستخرج:\n\n{extracted_text}")
-    except Exception as e:
-        bot.reply_to(message, "حدث خطأ أثناء تحميل الصورة.")
+        return None
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "أهلاً بك! أرسل لي أي صورة تحتوي على نص وسأقوم باستخراجه لك.")
+    bot.reply_to(message, "أهلاً بك يا إسماعيل! أرسل لي رابط أي ريلز أو فيديو وسأقوم بتحميله وإرساله لك فوراً.")
+
+@bot.message_handler(func=lambda message: message.text and message.text.startswith('http'))
+def handle_url(message):
+    try:
+        url = message.text.strip()
+        bot.reply_to(message, "⏳ جاري تحميل الفيديو من الرابط...")
+        
+        video_file = download_video(url)
+        
+        if video_file and os.path.exists(video_file):
+            with open(video_file, 'rb') as video:
+                bot.send_video(message.chat.id, video, caption="تم التحميل بنجاح بواسطة البوت ✨")
+            os.remove(video_file) # حذف الملف بعد إرساله لتوفير المساحة
+        else:
+            bot.reply_to(message, "عذراً، لم أستطع تحميل الفيديو. تأكد من صحة الرابط أو أن الفيديو متاح للعامة.")
+    except Exception as e:
+        bot.reply_to(message, "حدث خطأ أثناء معالجة الرابط.")
 
 if __name__ == "__main__":
     import threading
