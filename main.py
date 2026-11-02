@@ -23,11 +23,20 @@ def extract_text_from_image(image_bytes):
     try:
         response = requests.post(url, data=payload, files=files)
         result = response.json()
-        if result.get('IsParsedToUnicode'):
-            return result['ParsedResults'][0]['ParsedText']
-        return "لم استطع قراءة النص من الصورة."
+        print("OCR API Response:", result)
+        
+        if result.get('ParsedResults') and len(result['ParsedResults']) > 0:
+            parsed_text = result['ParsedResults'][0].get('ParsedText', '').strip()
+            if parsed_text:
+                return parsed_text
+        
+        error_msgs = result.get('ErrorMessage')
+        if error_msgs:
+            return f"خطأ من موقع OCR: {error_msgs}"
+            
+        return "لم يتم العثور على نص واضح في الصورة."
     except Exception as e:
-        return "حدث خطأ أثناء معالجة الصورة."
+        return f"حدث خطأ تقني: {str(e)}"
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
