@@ -42,7 +42,7 @@ def send_welcome(message):
         markup.add(btn_channel, btn_check)
         bot.reply_to(message, "🚨 **عذراً يا إسماعيل!** يجب عليك الاشتراك في قناتنا أولاً:\n\n🔗 https://t.me/bot1234569", reply_markup=markup, parse_mode="Markdown")
         return
-    bot.reply_to(message, "أهلاً بك يا إسماعيل! أرسل لي رابط ريلز لتحميله مباشرة، أو رابط أي حساب (Profile) وسأعرض لك أزرار تحميل منشوراته وقصصه فوراً.")
+    bot.reply_to(message, "أهلاً بك يا إسماعيل! البوت يعمل الآن بكامل طاقته. أرسل لي رابط ريلز أو رابط أي حساب لعرض أزرار التحميل فوراً.")
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_sub")
 def callback_query(call):
@@ -65,7 +65,6 @@ def handle_url(message):
     raw_url = message.text.strip()
     clean_url = raw_url.split('?')[0]
 
-    # إذا كان رابط ريلز أو منشور فردي
     if "reel" in clean_url or "p/" in clean_url:
         bot.reply_to(message, "⏳ جاري تحميل الفيديو...")
         try:
@@ -80,20 +79,15 @@ def handle_url(message):
                 bot.reply_to(message, "عذراً، لم أستطع تحميل الملف.")
         except Exception as e:
             bot.reply_to(message, f"حدث خطأ: {e}")
-            
     else:
-        # إذا كان رابط حساب شخصي، نظهر الأزرار مباشرة دون طلبات حظر المتابعين
         text = (
             f"👤 **تم استلام رابط الحساب بنجاح!**\n\n"
-            f"🔗 الرابط: `{clean_url}`\n\n"
-            f"اختر ما تريد تحميله من هذا الحساب أدناه:"
+            f"اختر ما تريد تحميله أدناه:"
         )
-        
         markup = telebot.types.InlineKeyboardMarkup()
         btn_posts = telebot.types.InlineKeyboardButton("📥 تحميل المنشورات", callback_data=f"dl_posts_{clean_url}")
         btn_stories = telebot.types.InlineKeyboardButton("📸 تحميل القصص", callback_data=f"dl_stories_{clean_url}")
         markup.add(btn_posts, btn_stories)
-        
         bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('dl_'))
@@ -135,7 +129,7 @@ def handle_download_actions(call):
                     bot.send_video(call.message.chat.id, f, caption="تم تحميل القصة بنجاح ✨")
                 os.remove('story.mp4')
             else:
-                bot.send_message(call.message.chat.id, "❌ لا توجد قصص نشطة حالياً لهذا الحساب أو أن الحساب يتطلب تسجيلاً.")
+                bot.send_message(call.message.chat.id, "❌ لا توجد قصص نشطة حالياً لهذا الحساب.")
         except Exception as e:
             bot.send_message(call.message.chat.id, f"عذراً، فشل تحميل القصص: {e}")
 
