@@ -3,7 +3,7 @@ import telebot
 import yt_dlp
 from flask import Flask, request
 
-TOKEN = "9024426042:AAHvLk97IkiWEdmOEyL5Fyr80x4KXaNaK-4"
+TOKEN = "9024426042:AAFPUbF80JpK1FgYq0_ZEv9DdBtGkuuWF1I"
 bot = telebot.TeleBot(TOKEN)
 
 app = Flask(__name__)
@@ -42,7 +42,7 @@ def send_welcome(message):
         markup.add(btn_channel, btn_check)
         bot.reply_to(message, "🚨 **عذراً يا إسماعيل!** يجب عليك الاشتراك في قناتنا أولاً:\n\n🔗 https://t.me/bot1234569", reply_markup=markup, parse_mode="Markdown")
         return
-    bot.reply_to(message, "أهلاً بك يا إسماعيل! البوت يعمل الآن بكامل طاقته. أرسل لي رابط ريلز أو رابط أي حساب لعرض أزرار التحميل فوراً.")
+    bot.reply_to(message, "أهلاً بك يا إسماعيل! البوت يعمل الآن بكامل طاقته بالتوكن الجديد. أرسل لي رابط ريلز أو رابط أي حساب لعرض أزرار التحميل فوراً.")
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_sub")
 def callback_query(call):
